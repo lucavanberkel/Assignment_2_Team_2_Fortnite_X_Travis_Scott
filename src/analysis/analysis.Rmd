@@ -1,0 +1,113 @@
+---
+title: "Fortnite X Travis Scott - World's first in-game concert"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+ knitr::opts_chunk$set(message = FALSE, warning = FALSE) 
+                     # message = FALSE, echo = TRUE, dpi = 180,
+                    #  fig.width = 8, fig.height = 5)
+
+library(data.table)
+library(ggplot2)
+library(tidyverse)
+library(forcats)
+
+# read full data set
+dt <- fread('../../gen/analysis/temp/preclean.csv')
+
+# load the different data sets 
+Before <- fread("../../gen/analysis/temp/preclean-before.csv") %>% as_tibble() %>% 
+  # met mutate voeg je een kolom toe, waarde voor kolom moment = voor 
+    mutate(moment = "Before")
+
+During <- fread("../../gen/analysis/temp/preclean-during.csv") %>% as_tibble() %>% 
+  mutate(moment = "During")
+
+After <- fread("../../gen/analysis/temp/preclean-after.csv") %>% as_tibble() %>% 
+    mutate(moment = "After")
+
+```
+
+Buckle your seatbelts, because in seven small graphs, and brief statistic summeries, we are going to learn you something about the wonders of the first-ever in-game concert by the one and only rap hero: Travis Scott. So sit down, relax, and enjoy the experience of our many-hours-struggling-to-program-extravaganza.
+
+
+### Plots 
+
+Below you find the plots on the polarity scores 'before', 'during' and 'after' the event. Positive perceivement is split from negative perceivement to be able to see a clear distinction. 
+
+```{r, echo = FALSE}
+# read final data
+# Merge data
+# Start with "Before" 
+Dataset <- Before %>% 
+  # 'Bind rows' to add rows. Only possible when all columns are equal, therefore, we called every column 'moment'
+  bind_rows(During) %>% 
+  bind_rows(After) %>% 
+  # 'mutate' creates another new column
+  # 'case when' is a if_else function, but for multiple conditions
+  mutate(Eigen_polarity = case_when(
+    polarity > 0 ~   "Positive",
+    polarity < 0 ~  "Negative",
+    #?case_when
+    # Should end with TRUE ~value, this is a function of 'case_when'
+    TRUE ~ "Neutral"
+  ))
+
+Dataset %>% 
+  # Over here we relevel the variable 'moment',
+  # this becomes possible when we made 'moment' into a factor
+  # str(Dataset$mutate) # factor
+  # fct_relevel = factor_relevel
+  mutate(moment = moment %>% as_factor(),
+         moment = moment %>% fct_relevel("Before", "During", "After")) %>% 
+  
+  # Remove Neutral plot 
+  filter(Eigen_polarity != "Neutral") %>% 
+  # ggplot is the functie to make a plot
+  # x = polarity, no y variables because geom_histogram does this itself (counts rows)
+  ggplot(aes(x = polarity, fill = moment)) +
+  # number of bins = 10, eventually adjust. Default = 30
+  geom_histogram(bins = 10) +
+  # scales = free makes sure the x-as en y-as are scaled freely 
+  # free_x scales all y-as equal
+  facet_wrap(Eigen_polarity ~ moment, scales = "free_x")
+```
+
+### Summary statistics
+
+```{r}
+summary(Before)
+summary(During)
+summary(After)
+```
+
+### Plots full dataset
+```{r, echo = FALSE}
+# Creates histogram for overview
+ggplot(dt, aes(x=polarity)) +
+  geom_histogram(fill="blue", alpha=0.5, position="identity") + ggtitle('Polarity distribution')
+```
+
+### Summary statistics full dataset
+
+```{r, echo= FALSE}
+summary(dt)
+```
+
+### Distribution polarity x time sets
+
+```{r, echo = FALSE}
+Dataset %>% 
+  mutate(moment = moment %>% as_factor(),
+         moment = moment %>% fct_relevel("Before", "During", "After")) %>% 
+  group_by(moment) %>% 
+  count(Eigen_polarity) %>% 
+  mutate(pct = n / sum(n),
+         Percentage = scales::percent(pct)) %>% 
+  select(-pct) %>% 
+  DT::datatable()
+  
+```
+
+For more information or questions about the analysis please refer to m.terweij@tilburguniversity.edu
